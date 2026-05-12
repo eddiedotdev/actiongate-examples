@@ -1,5 +1,7 @@
 # ActionGate Examples
 
+[![actiongate-examples MCP server](https://glama.ai/mcp/servers/eddiedotdev/actiongate-examples/badges/score.svg)](https://glama.ai/mcp/servers/eddiedotdev/actiongate-examples)
+
 Integration examples for [ActionGate](https://actiongate.xyz) — an x402 + Stripe payment proxy for REST APIs and MCP tools.
 
 ActionGate ships with three built-in safety tools as its default example config:
@@ -132,6 +134,16 @@ npm install -g actiongate-mcp
 xyz.actiongate.api/actiongate
 ```
 
+### MCP server quality
+
+This repo includes [`glama.json`](glama.json) metadata for Glama indexing. The manifest documents the hosted ActionGate MCP endpoint, maintainers, MIT license, tool annotations, input schemas, output schemas, and the intended pre-execution flow:
+
+1. Call `risk_score` to classify the proposed action.
+2. Call `simulate` to estimate cost, failure probability, and side effects.
+3. Call `policy_gate` to return a final policy decision before execution.
+
+All three default MCP tools are pre-execution checks. They do not submit transactions, move funds, or mutate policy packs.
+
 ## BYO API (Proxy Config)
 
 ActionGate can proxy any upstream API. Operators define tools in a `proxy-config.json` and ActionGate exposes them over REST (`/proxy/:toolName`) and MCP (`/mcp`) with x402 or Stripe billing attached.
@@ -185,3 +197,7 @@ Custom proxy deployments set their own pricing per tool in `proxy-config.json`.
 - [Server Card](https://api.actiongate.xyz/.well-known/mcp/server-card.json)
 - [Discovery JSON](https://api.actiongate.xyz/.well-known/agent.json)
 - [Billing Portal](https://api.actiongate.xyz/billing)
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

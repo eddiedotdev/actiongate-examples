@@ -2,144 +2,310 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "name": "actiongate",
   "display_name": "ActionGate",
-  "description": "x402 + Stripe payment proxy for REST APIs and MCP tools. Pre-execution safety layer for autonomous agent wallets with risk scoring, transaction simulation, and policy enforcement.",
+  "description": "Pre-execution safety layer for autonomous agent wallets. ActionGate exposes focused MCP tools for risk scoring, transaction simulation, and policy enforcement before an agent executes an onchain action.",
+  "maintainers": ["eddiedotdev"],
+  "license": "MIT",
+  "categories": ["autonomous-agents", "blockchain", "security-and-iam"],
   "repository": {
     "url": "https://github.com/eddiedotdev/actiongate-examples",
     "source": "github"
   },
+  "homepage": "https://actiongate.xyz",
+  "documentation": "https://api.actiongate.xyz/docs",
   "version_detail": {
     "version": "1.0.0"
+  },
+  "transport": {
+    "type": "streamable-http",
+    "url": "https://api.actiongate.xyz/mcp"
   },
   "tools": [
     {
       "name": "risk_score",
-      "description": "Score the risk of a proposed agent action before execution. Evaluates actor, action type, and context to return a numeric risk score with explanatory factors.",
+      "description": "Evaluate the risk of a proposed wallet or agent action before execution. Use this first when an autonomous agent is considering transfers, swaps, approvals, policy-sensitive API calls, or other actions that may move value or change permissions. Do not use it after execution as an audit log; it is a pre-execution scoring tool. The call is read-only and does not submit transactions, mutate policies, or move funds.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
       "input_schema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "actor": {
             "type": "object",
-            "description": "Actor metadata for the agent proposing the action.",
+            "description": "The agent, service, or wallet operator proposing the action.",
+            "additionalProperties": false,
             "properties": {
               "actor_id": {
                 "type": "string",
-                "description": "Stable actor identifier for the agent or wallet operator."
+                "minLength": 1,
+                "description": "Stable identifier for the acting agent or wallet operator, such as agent_ops_02."
               },
               "wallet_address": {
                 "type": "string",
-                "description": "Optional onchain wallet address associated with the acting agent."
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "Optional EVM wallet address controlled by or associated with the actor."
               }
             },
             "required": ["actor_id"]
           },
           "action": {
             "type": "object",
-            "description": "Action payload to evaluate.",
+            "description": "The proposed action to score. Include the action category and all known transaction or API details.",
+            "additionalProperties": true,
             "properties": {
               "action_type": {
                 "type": "string",
-                "description": "The proposed action category, such as transfer, swap, or approve."
+                "enum": ["transfer", "swap", "approve", "contract_call", "api_call", "other"],
+                "description": "Category of the proposed action. Use other only when the action does not fit the listed categories."
+              },
+              "network": {
+                "type": "string",
+                "description": "Blockchain network for onchain actions, such as base, ethereum, arbitrum, optimism, or polygon."
+              },
+              "asset_symbol": {
+                "type": "string",
+                "description": "Asset symbol involved in the action, such as USDC or ETH."
+              },
+              "amount": {
+                "type": "string",
+                "description": "Decimal amount or smallest-unit amount, using the same units the caller will submit downstream."
+              },
+              "target": {
+                "type": "string",
+                "description": "Target wallet, contract, spender, or API endpoint for the proposed action."
               }
             },
             "required": ["action_type"]
           },
           "context": {
             "type": "object",
-            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+            "description": "Optional execution context that can improve scoring, such as balances, recent activity, allowlists, chain state, or treasury limits.",
+            "additionalProperties": true
           }
         },
         "required": ["actor", "action"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "risk_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Normalized risk score where higher values indicate greater risk."
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Human-readable risk tier derived from the score."
+          },
+          "factors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Reasons that contributed to the score."
+          }
+        }
       }
     },
     {
       "name": "simulate",
-      "description": "Estimate cost, failure risk, and notable side effects for a proposed action. Returns estimated gas, failure probability, and warnings.",
+      "description": "Estimate execution cost, failure probability, and notable side effects for a proposed action before execution. Use after risk_score when the agent needs operational detail such as gas cost, revert risk, balance impact, or warnings. Do not use it as a guarantee that a transaction will succeed, and do not use it to submit the action. The call is read-only and performs estimation only.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
       "input_schema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "actor": {
             "type": "object",
-            "description": "Actor metadata for the agent proposing the action.",
+            "description": "The agent, service, or wallet operator proposing the action.",
+            "additionalProperties": false,
             "properties": {
               "actor_id": {
                 "type": "string",
-                "description": "Stable actor identifier for the agent or wallet operator."
+                "minLength": 1,
+                "description": "Stable identifier for the acting agent or wallet operator."
               },
               "wallet_address": {
                 "type": "string",
-                "description": "Optional onchain wallet address associated with the acting agent."
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "Optional EVM wallet address controlled by or associated with the actor."
               }
             },
             "required": ["actor_id"]
           },
           "action": {
             "type": "object",
-            "description": "Action payload to evaluate.",
+            "description": "The exact proposed action to simulate. Include enough information to estimate cost and failure risk.",
+            "additionalProperties": true,
             "properties": {
               "action_type": {
                 "type": "string",
-                "description": "The proposed action category, such as transfer, swap, or approve."
+                "enum": ["transfer", "swap", "approve", "contract_call", "api_call", "other"],
+                "description": "Category of the proposed action."
+              },
+              "network": {
+                "type": "string",
+                "description": "Blockchain network for onchain actions."
+              },
+              "asset_symbol": {
+                "type": "string",
+                "description": "Asset symbol involved in the action."
+              },
+              "amount": {
+                "type": "string",
+                "description": "Decimal amount or smallest-unit amount, matching the downstream transaction format."
+              },
+              "target": {
+                "type": "string",
+                "description": "Target wallet, contract, spender, or API endpoint."
               }
             },
             "required": ["action_type"]
           },
           "context": {
             "type": "object",
-            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+            "description": "Optional chain, balance, route, allowance, or treasury context for more accurate estimation.",
+            "additionalProperties": true
           }
         },
         "required": ["actor", "action"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "estimated_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Estimated execution cost in USD when available."
+          },
+          "failure_probability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Estimated probability that the action fails or reverts."
+          },
+          "warnings": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Simulation warnings or side effects the agent should consider."
+          }
+        }
       }
     },
     {
       "name": "policy_gate",
-      "description": "Apply treasury policy to a proposed action and return allow, deny, or allow-with-limits. Checks action against configurable policy packs.",
+      "description": "Check whether a proposed action complies with a named policy pack and return allow, deny, or allow-with-limits before execution. Use after risk_score and simulate when the agent needs a final policy decision. Do not use this to create, edit, or delete policy packs; it only evaluates the supplied action against existing policy inputs. The call is read-only with respect to the target wallet and does not execute the action.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
       "input_schema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "actor": {
             "type": "object",
-            "description": "Actor metadata for the agent proposing the action.",
+            "description": "The agent, service, or wallet operator proposing the action.",
+            "additionalProperties": false,
             "properties": {
               "actor_id": {
                 "type": "string",
-                "description": "Stable actor identifier for the agent or wallet operator."
+                "minLength": 1,
+                "description": "Stable identifier for the acting agent or wallet operator."
               },
               "wallet_address": {
                 "type": "string",
-                "description": "Optional onchain wallet address associated with the acting agent."
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "Optional EVM wallet address controlled by or associated with the actor."
               }
             },
             "required": ["actor_id"]
           },
           "action": {
             "type": "object",
-            "description": "Action payload to evaluate.",
+            "description": "The proposed action to evaluate against policy.",
+            "additionalProperties": true,
             "properties": {
               "action_type": {
                 "type": "string",
-                "description": "The proposed action category, such as transfer, swap, or approve."
+                "enum": ["transfer", "swap", "approve", "contract_call", "api_call", "other"],
+                "description": "Category of the proposed action."
+              },
+              "network": {
+                "type": "string",
+                "description": "Blockchain network for onchain actions."
+              },
+              "asset_symbol": {
+                "type": "string",
+                "description": "Asset symbol involved in the action."
+              },
+              "amount": {
+                "type": "string",
+                "description": "Decimal amount or smallest-unit amount, matching the downstream transaction format."
+              },
+              "target": {
+                "type": "string",
+                "description": "Target wallet, contract, spender, or API endpoint."
               }
             },
             "required": ["action_type"]
           },
           "policy": {
             "type": "object",
-            "description": "Policy pack input, including policy_id and any policy-specific override values."
+            "description": "Policy pack selection and optional override values for this evaluation.",
+            "additionalProperties": true,
+            "properties": {
+              "policy_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Identifier of the policy pack to apply, such as treasury_default_v1."
+              }
+            },
+            "required": ["policy_id"]
           },
           "context": {
             "type": "object",
-            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+            "description": "Optional context such as daily spend totals, allowlists, approval history, balances, or route metadata.",
+            "additionalProperties": true
           }
         },
         "required": ["actor", "action", "policy"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["allow", "deny", "allow-with-limits"],
+            "description": "Policy decision for the proposed action."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Concise explanation of why the policy decision was returned."
+          },
+          "limits": {
+            "type": "object",
+            "description": "Any policy limits that apply when decision is allow-with-limits.",
+            "additionalProperties": true
+          }
+        }
       }
     }
   ],
   "prompts": [
     {
       "name": "review_treasury_transfer",
-      "description": "Guide an agent through the recommended ActionGate evaluation flow for a treasury transfer."
+      "description": "Guide an agent through ActionGate's recommended pre-execution flow for a treasury transfer: score risk, simulate costs and failure probability, apply policy, then return an approve or reject recommendation."
     }
   ]
 }
