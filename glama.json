@@ -1,0 +1,145 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "actiongate",
+  "display_name": "ActionGate",
+  "description": "x402 + Stripe payment proxy for REST APIs and MCP tools. Pre-execution safety layer for autonomous agent wallets with risk scoring, transaction simulation, and policy enforcement.",
+  "repository": {
+    "url": "https://github.com/eddiedotdev/actiongate-examples",
+    "source": "github"
+  },
+  "version_detail": {
+    "version": "1.0.0"
+  },
+  "tools": [
+    {
+      "name": "risk_score",
+      "description": "Score the risk of a proposed agent action before execution. Evaluates actor, action type, and context to return a numeric risk score with explanatory factors.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "description": "Actor metadata for the agent proposing the action.",
+            "properties": {
+              "actor_id": {
+                "type": "string",
+                "description": "Stable actor identifier for the agent or wallet operator."
+              },
+              "wallet_address": {
+                "type": "string",
+                "description": "Optional onchain wallet address associated with the acting agent."
+              }
+            },
+            "required": ["actor_id"]
+          },
+          "action": {
+            "type": "object",
+            "description": "Action payload to evaluate.",
+            "properties": {
+              "action_type": {
+                "type": "string",
+                "description": "The proposed action category, such as transfer, swap, or approve."
+              }
+            },
+            "required": ["action_type"]
+          },
+          "context": {
+            "type": "object",
+            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+          }
+        },
+        "required": ["actor", "action"]
+      }
+    },
+    {
+      "name": "simulate",
+      "description": "Estimate cost, failure risk, and notable side effects for a proposed action. Returns estimated gas, failure probability, and warnings.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "description": "Actor metadata for the agent proposing the action.",
+            "properties": {
+              "actor_id": {
+                "type": "string",
+                "description": "Stable actor identifier for the agent or wallet operator."
+              },
+              "wallet_address": {
+                "type": "string",
+                "description": "Optional onchain wallet address associated with the acting agent."
+              }
+            },
+            "required": ["actor_id"]
+          },
+          "action": {
+            "type": "object",
+            "description": "Action payload to evaluate.",
+            "properties": {
+              "action_type": {
+                "type": "string",
+                "description": "The proposed action category, such as transfer, swap, or approve."
+              }
+            },
+            "required": ["action_type"]
+          },
+          "context": {
+            "type": "object",
+            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+          }
+        },
+        "required": ["actor", "action"]
+      }
+    },
+    {
+      "name": "policy_gate",
+      "description": "Apply treasury policy to a proposed action and return allow, deny, or allow-with-limits. Checks action against configurable policy packs.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "description": "Actor metadata for the agent proposing the action.",
+            "properties": {
+              "actor_id": {
+                "type": "string",
+                "description": "Stable actor identifier for the agent or wallet operator."
+              },
+              "wallet_address": {
+                "type": "string",
+                "description": "Optional onchain wallet address associated with the acting agent."
+              }
+            },
+            "required": ["actor_id"]
+          },
+          "action": {
+            "type": "object",
+            "description": "Action payload to evaluate.",
+            "properties": {
+              "action_type": {
+                "type": "string",
+                "description": "The proposed action category, such as transfer, swap, or approve."
+              }
+            },
+            "required": ["action_type"]
+          },
+          "policy": {
+            "type": "object",
+            "description": "Policy pack input, including policy_id and any policy-specific override values."
+          },
+          "context": {
+            "type": "object",
+            "description": "Optional execution context such as chain state, balances, or treasury metadata."
+          }
+        },
+        "required": ["actor", "action", "policy"]
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "name": "review_treasury_transfer",
+      "description": "Guide an agent through the recommended ActionGate evaluation flow for a treasury transfer."
+    }
+  ]
+}
