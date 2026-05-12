@@ -2,7 +2,7 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "name": "actiongate",
   "display_name": "ActionGate",
-  "description": "Pre-execution safety layer for autonomous agent wallets. ActionGate exposes focused MCP tools for risk scoring, transaction simulation, and policy enforcement before an agent executes an onchain action.",
+  "description": "Public examples and metadata for the hosted ActionGate MCP endpoint. ActionGate is a pre-execution safety layer for autonomous agent wallets with focused MCP tools for risk scoring, transaction simulation, and policy enforcement before an agent executes an onchain action.",
   "maintainers": ["eddiedotdev"],
   "license": "MIT",
   "categories": ["autonomous-agents", "blockchain", "security-and-iam"],

@@ -136,7 +136,7 @@ xyz.actiongate.api/actiongate
 
 ### MCP server quality
 
-This repo includes [`glama.json`](glama.json) metadata for Glama indexing. The manifest documents the hosted ActionGate MCP endpoint, maintainers, MIT license, tool annotations, input schemas, output schemas, and the intended pre-execution flow:
+This public examples repo includes [`glama.json`](glama.json) metadata for Glama indexing of the hosted ActionGate MCP endpoint. The production ActionGate implementation is maintained separately; this repo documents client integrations, proxy configuration, the hosted endpoint, maintainers, MIT license, tool annotations, input schemas, output schemas, and the intended pre-execution flow:
 
 1. Call `risk_score` to classify the proposed action.
 2. Call `simulate` to estimate cost, failure probability, and side effects.
